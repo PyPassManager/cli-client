@@ -6,3 +6,14 @@ Init of PyPass
 - Anti-Brute Force protection was implemented partially
 - Added a few tests to check the integrity of the database
 - Anti-Bypass by changing the system time was partially implemented
+
+v0.0.2
+Bugfixes and improvements
+- Fixed a bug where the master password was not set correctly
+- Fixed a bug where the master password was not checked correctly
+- Fixed a bug where the security hash was not updated correctly
+- Fixed a bug where the security hash was not checked correctly
+- 256-bit AES-GCM encryption of logins and passwords
+- TOTP partially added
+- Rebase file structure and removed unnecessary files
+- Security improvements
