@@ -23,3 +23,9 @@ Bugfixes and optimizations
 - Fixed a bug where salt was not generated correctly when the program was started for the first time
 - Added explanations for the code to simplify collaboration
 - Removal of unnecessary functions
+
+v0.0.4
+Added comments and explanations
+- Added comments to the code to make it easier to understand
+- Added explanations for the functions to simplify collaboration
+- TODO : bug fix in list passwords - add a pin ?

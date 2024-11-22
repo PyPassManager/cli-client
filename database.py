@@ -1,25 +1,31 @@
 import sqlite3
 import shutil
+import os
+
+#=========================================================================================================
+# Ce fichier contient les fonctions pour créer une connexion à la base de données, créer les tables de la
+# base de données lors de la première exécution, sauvegarder et restaurer la base de données.
+#=========================================================================================================
 
 def create_connection():
     '''Fonction pour créer une connexion à la base de données'''
-    conn = sqlite3.connect('passwords.db')
-    return conn
+    return sqlite3.connect('passwords.db')
+     
 
 def create_tables(conn):
     '''Fonction pour créer les tables de la base de données lors de la première exécution'''
     cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS master_password
-                      (id INTEGER PRIMARY KEY, encrypted_password BLOB, iv BLOB, salt BLOB, tag BLOB)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS passwords
-                      (id INTEGER PRIMARY KEY, site TEXT, username TEXT, encrypted_password BLOB, iv BLOB, tag BLOB)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS totp
-                      (id INTEGER PRIMARY KEY, site TEXT, secret TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS login_attempts
-                      (id INTEGER PRIMARY KEY, attempts INTEGER, last_attempt INTEGER)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS security
-                      (id INTEGER PRIMARY KEY, login_attempts_hash TEXT, master_password_hash TEXT, last_hash_time INTEGER)''')
+    tables = [
+        '''CREATE TABLE IF NOT EXISTS master_password (id INTEGER PRIMARY KEY, encrypted_password BLOB, iv BLOB, salt BLOB, tag BLOB)''',
+        '''CREATE TABLE IF NOT EXISTS passwords (id INTEGER PRIMARY KEY, site TEXT, username TEXT, encrypted_password BLOB, iv BLOB, tag BLOB)''',
+        '''CREATE TABLE IF NOT EXISTS totp (id INTEGER PRIMARY KEY, site TEXT, secret TEXT)''',
+        '''CREATE TABLE IF NOT EXISTS login_attempts (id INTEGER PRIMARY KEY, attempts INTEGER, last_attempt INTEGER)''',
+        '''CREATE TABLE IF NOT EXISTS security (id INTEGER PRIMARY KEY, login_attempts_hash TEXT, master_password_hash TEXT, last_hash_time INTEGER)'''
+    ]
+    for table in tables: # Permet d'optimiser la création des tables
+        cursor.execute(table)
     conn.commit()
+    os.chmod('passwords.db',0o600) # Implémenté par Yoann pour sécuriser la base de données
 
 def backup_database():
     '''Fonction pour sauvegarder la base de données'''

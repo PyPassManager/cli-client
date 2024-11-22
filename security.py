@@ -9,6 +9,11 @@ from database import create_connection
 from encryption import derive_key, encrypt_password, decrypt_password
 from database import backup_database, restore_database
 
+# =========================================================================================================
+# Ce fichier contient les fonctions pour vérifier le mot de passe maître, réinitialiser les tentatives de
+# connexion et mettre à jour le hachage de sécurité.
+# =========================================================================================================
+
 def create_attempts_table(conn):
     cursor = conn.cursor()
     cursor.execute('''
@@ -24,6 +29,10 @@ def create_attempts_table(conn):
     ''')
     conn.commit()
 
+# =========================================================================================================
+# Fonctions pour mettre à jour le hachage de sécurité. Le hachage de sécurité est utilisé pour vérifier
+# l'intégrité des données de la base de données et pour empêcher les attaques par modification des données.
+# =========================================================================================================
 def update_security_hash(conn):
     '''Fonction pour mettre à jour le hachage de sécurité'''
     cursor = conn.cursor()
@@ -38,6 +47,10 @@ def update_security_hash(conn):
         conn.commit()
         backup_database()
 
+# =========================================================================================================
+# Fonctions pour vérifier l'intégrité de la base de données. Cette fonction compare le hachage de sécurité
+# stocké dans la base de données avec le hachage actuel des tentatives de connexion
+# =========================================================================================================
 def check_security_integrity(conn):
     '''Fonction pour vérifier l'intégrité de la base de données'''
     cursor = conn.cursor()
@@ -64,6 +77,10 @@ def check_security_integrity(conn):
     else:
         update_security_hash(conn)
 
+# =========================================================================================================
+# Fonctions pour définir et vérifier le mot de passe maître. Le mot de passe maître est utilisé pour chiffrer
+# les mots de passe stockés dans la base de données.
+# =========================================================================================================
 def set_master_password(conn):
     '''Fonction pour définir le mot de passe maître'''
     # Connexion à la base de données et création du mot de passe maître
@@ -80,7 +97,7 @@ def set_master_password(conn):
         break
     
     # Génération des clés de chiffrement
-    salt = os.urandom(16)
+    salt = os.urandom(16) 
     key = derive_key(master_password, salt)
     encrypted_password, iv, tag = encrypt_password(master_password, key)
     
@@ -92,20 +109,29 @@ def set_master_password(conn):
     backup_database()
     return master_password, base64.b64encode(salt).decode()
 
+# =========================================================================================================
+# Fonction pour vérifier le mot de passe maître. Cette fonction vérifie si le mot de passe maître existe
+# déjà dans la base de données et le compare avec le mot de passe fourni par l'utilisateur.
+# Cette fonction bloque également temporairement l'accès si le mot de passe est incorrect.
+# =========================================================================================================
+
 def check_master_password(conn):
     '''Fonction pour vérifier le mot de passe maître'''
     create_attempts_table(conn)
     check_security_integrity(conn)
     
+    # Récupération du mot de passe maître de la base de données
     cursor = conn.cursor()
     cursor.execute("SELECT encrypted_password, iv, salt, tag FROM master_password")
     result = cursor.fetchone()
     
+    # Vérification des tentatives de connexion
     cursor.execute("SELECT attempts, last_attempt FROM login_attempts WHERE id = 1")
     attempts_data = cursor.fetchone()
     attempts, last_attempt = attempts_data
     current_time = int(time.time())
     
+    # Fonction pour calculer le temps d'attente en fonction du nombre de tentatives
     def get_wait_time(attempts):
         if attempts <= 3:
             return 5
@@ -113,6 +139,7 @@ def check_master_password(conn):
 
     wait_time = get_wait_time(attempts)
     
+    # Vérification du temps d'attente
     if current_time - last_attempt < wait_time:
         remaining_time = wait_time - (current_time - last_attempt)
         print(f"Accès temporairement bloqué. Veuillez réessayer dans {int(remaining_time)} secondes.")
@@ -146,7 +173,10 @@ def check_master_password(conn):
     else:
         return set_master_password(conn)
 
-
+# =========================================================================================================
+# Fonction pour réinitialiser les tentatives de connexion. Cette fonction réinitialise le compteur de
+# tentatives de connexion et met à jour le hachage de sécurité.
+# =========================================================================================================
 def reset_login_attempts(conn):
     '''Fonction pour réinitialiser les tentatives de connexion'''
     cursor = conn.cursor()
