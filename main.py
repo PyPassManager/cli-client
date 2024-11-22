@@ -1,10 +1,10 @@
 import sys
-from database import create_connection, create_tables, backup_database
+from database import create_connection, create_tables
 from security import check_master_password
 from encryption import derive_key
 from password_utils import add_password, remove_password, analyze_password_strength, generate_password
 from totp import add_totp, get_totp
-import base64
+import os
 
 def main():
     conn = create_connection()
@@ -13,8 +13,11 @@ def main():
     if master_password is None:
         print("ERREUR CRITIQUE : LE MOT DE PASSE MAÎTRE EST NULL.")
         sys.exit()
-    
+    salt = os.urandom(16)
+    if salt is None:
+        print("Veuillez redémarrer le programme.")
     key = derive_key(master_password, salt)
+
     
     while True:
         print("\n1. Ajouter un mot de passe")

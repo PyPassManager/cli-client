@@ -25,6 +25,7 @@ def create_attempts_table(conn):
     conn.commit()
 
 def update_security_hash(conn):
+    '''Fonction pour mettre à jour le hachage de sécurité'''
     cursor = conn.cursor()
     cursor.execute("SELECT attempts, last_attempt FROM login_attempts WHERE id = 1")
     attempts_data = cursor.fetchone()
@@ -38,6 +39,7 @@ def update_security_hash(conn):
         backup_database()
 
 def check_security_integrity(conn):
+    '''Fonction pour vérifier l'intégrité de la base de données'''
     cursor = conn.cursor()
     cursor.execute("SELECT login_attempts_hash, last_hash_time FROM security WHERE id = 1")
     result = cursor.fetchone()
@@ -63,6 +65,8 @@ def check_security_integrity(conn):
         update_security_hash(conn)
 
 def set_master_password(conn):
+    '''Fonction pour définir le mot de passe maître'''
+    # Connexion à la base de données et création du mot de passe maître
     cursor = conn.cursor()
     while True:
         master_password = getpass.getpass("Créez votre mot de passe maître : ")
@@ -75,10 +79,12 @@ def set_master_password(conn):
             continue
         break
     
+    # Génération des clés de chiffrement
     salt = os.urandom(16)
     key = derive_key(master_password, salt)
     encrypted_password, iv, tag = encrypt_password(master_password, key)
     
+    # Insertion du mot de passe maître dans la base de données
     cursor.execute("INSERT INTO master_password (encrypted_password, iv, salt, tag) VALUES (?, ?, ?, ?)",
                    (encrypted_password, iv, base64.b64encode(salt).decode(), tag))
     conn.commit()
@@ -87,6 +93,7 @@ def set_master_password(conn):
     return master_password, base64.b64encode(salt).decode()
 
 def check_master_password(conn):
+    '''Fonction pour vérifier le mot de passe maître'''
     create_attempts_table(conn)
     check_security_integrity(conn)
     
@@ -112,6 +119,7 @@ def check_master_password(conn):
         conn.close()
         sys.exit()
 
+    # Vérification de l'existence du mot de passe maître
     if result:
         encrypted_password, iv, salt, tag = result
         salt = base64.b64decode(salt)
@@ -124,7 +132,7 @@ def check_master_password(conn):
                 cursor.execute("UPDATE login_attempts SET attempts = 0, last_attempt = 0 WHERE id = 1")
                 conn.commit()
                 update_security_hash(conn)
-                return master_password, salt  # Retourne le mot de passe et le sel
+                return master_password, salt
             else:
                 print("Mot de passe incorrect.")
                 attempts += 1
@@ -140,109 +148,16 @@ def check_master_password(conn):
 
 
 def reset_login_attempts(conn):
+    '''Fonction pour réinitialiser les tentatives de connexion'''
     cursor = conn.cursor()
     cursor.execute("UPDATE login_attempts SET attempts = 0, last_attempt = 0 WHERE id = 1")
     conn.commit()
     update_security_hash(conn)
 
-def check_password_reuse(conn, new_password, key):
-    cursor = conn.cursor()
-    cursor.execute("SELECT encrypted_password, iv, tag FROM passwords")
-    stored_passwords = cursor.fetchall()
-    
-    for encrypted_password, iv, tag in stored_passwords:
-        try:
-            decrypted_password = decrypt_password(encrypted_password, iv, tag, key).decode()
-            if decrypted_password == new_password:
-                return True
-        except:
-            continue
-    return False
 
-def enforce_password_policy(password):
-    if len(password) < 12:
-        return False, "Le mot de passe doit contenir au moins 12 caractères."
-    if not re.search(r"[A-Z]", password):
-        return False, "Le mot de passe doit contenir au moins une lettre majuscule."
-    if not re.search(r"[a-z]", password):
-        return False, "Le mot de passe doit contenir au moins une lettre minuscule."
-    if not re.search(r"\d", password):
-        return False, "Le mot de passe doit contenir au moins un chiffre."
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-        return False, "Le mot de passe doit contenir au moins un caractère spécial."
-    return True, "Le mot de passe respecte la politique de sécurité."
 
-def secure_delete_file(filename):
-    if not os.path.exists(filename):
-        return
-    
-    # Écraser le fichier avec des données aléatoires
-    file_size = os.path.getsize(filename)
-    with open(filename, "wb") as f:
-        f.write(os.urandom(file_size))
-    
-    # Supprimer le fichier
-    os.remove(filename)
 
-def secure_string_comparison(str1, str2):
-    if len(str1) != len(str2):
-        return False
-    result = 0
-    for x, y in zip(str1, str2):
-        result |= ord(x) ^ ord(y)
-    return result == 0
 
-def generate_secure_salt():
-    return os.urandom(32)  # 256 bits
 
-def rate_limit_check(conn, action, limit, time_window):
-    cursor = conn.cursor()
-    current_time = int(time.time())
-    cursor.execute(f"SELECT COUNT(*) FROM {action}_log WHERE timestamp > ?", (current_time - time_window,))
-    count = cursor.fetchone()[0]
-    if count >= limit:
-        return False
-    cursor.execute(f"INSERT INTO {action}_log (timestamp) VALUES (?)", (current_time,))
-    conn.commit()
-    return True
 
-# Fonction pour nettoyer les anciens logs
-def clean_old_logs(conn):
-    cursor = conn.cursor()
-    current_time = int(time.time())
-    cursor.execute("DELETE FROM login_attempts_log WHERE timestamp < ?", (current_time - 86400,))  # Supprimer les logs de plus de 24 heures
-    conn.commit()
 
-# Fonction pour vérifier et mettre à jour la version de la base de données
-def check_database_version(conn):
-    cursor = conn.cursor()
-    cursor.execute("PRAGMA user_version")
-    current_version = cursor.fetchone()[0]
-    
-    if current_version < 1:
-        # Mettre à jour la structure de la base de données si nécessaire
-        cursor.execute("ALTER TABLE passwords ADD COLUMN created_at INTEGER")
-        cursor.execute("ALTER TABLE passwords ADD COLUMN updated_at INTEGER")
-        
-        # Mettre à jour la version
-        cursor.execute("PRAGMA user_version = 1")
-        conn.commit()
-        print("Base de données mise à jour vers la version 1")
-
-# Fonction pour journaliser les actions importantes
-def log_action(conn, action, details):
-    cursor = conn.cursor()
-    current_time = int(time.time())
-    cursor.execute("INSERT INTO action_log (action, details, timestamp) VALUES (?, ?, ?)",
-                   (action, details, current_time))
-    conn.commit()
-
-# Fonction pour vérifier l'intégrité de la base de données
-def verify_database_integrity(conn):
-    cursor = conn.cursor()
-    cursor.execute("PRAGMA integrity_check")
-    result = cursor.fetchone()[0]
-    if result != "ok":
-        print("Erreur d'intégrité de la base de données détectée.")
-        return False
-    return True

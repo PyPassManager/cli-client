@@ -17,3 +17,9 @@ Bugfixes and improvements
 - TOTP partially added
 - Rebase file structure and removed unnecessary files
 - Security improvements
+
+v0.0.3
+Bugfixes and optimizations
+- Fixed a bug where salt was not generated correctly when the program was started for the first time
+- Added explanations for the code to simplify collaboration
+- Removal of unnecessary functions
