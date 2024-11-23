@@ -8,10 +8,15 @@ from database import backup_database
 # Ajoute un mot de passe à la base de données et le chiffre en utilisant la clé fournie
 def add_password(conn, site, username, password, key):
     cursor = conn.cursor()
-    encrypted_password, iv, tag = encrypt_password(password, key)
-    username, iv, tag = encrypt_password(username, key)
-    cursor.execute("INSERT INTO passwords (site, username, encrypted_password, iv, tag) VALUES (?, ?, ?, ?, ?)",
-                   (site, username, encrypted_password, iv, tag))
+    # Chiffrer le mot de passe
+    enc_password, pass_iv, pass_tag = encrypt_password(password, key)
+    # Chiffrer le nom d'utilisateur avec un nouvel IV
+    enc_username, user_iv, user_tag = encrypt_password(username, key)
+    
+    cursor.execute("""
+        INSERT INTO passwords (site, username, encrypted_password, iv_password, iv_username, tag_password, tag_username)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (site, enc_username, enc_password, pass_iv, user_iv, pass_tag, user_tag))
     conn.commit()
     print("Mot de passe ajouté avec succès.")
     backup_database()
@@ -29,12 +34,11 @@ def remove_password(conn, site, username):
 
 def list_passwords(conn, key):
     cursor = conn.cursor()
-    cursor.execute("SELECT site, username, encrypted_password, iv, tag FROM passwords")
+    cursor.execute("SELECT site, username, encrypted_password, iv_password, iv_username, tag_password, tag_username FROM passwords")
     results = cursor.fetchall()
-    for result in results:
-        site, username, encrypted_password, iv, tag = result
-        decrypted_password = decrypt_password(encrypted_password, iv, tag, key).decode()
-        decrypted_username = decrypt_password(username, iv, tag, key).decode()
-        print(f"Site : {site}, Utilisateur : {decrypted_username}, Mot de passe : {decrypted_password}")
-
-
+    for site, username, enc_password, pass_iv, user_iv, pass_tag, user_tag in results:
+        # Déchiffrer le mot de passe
+        password = decrypt_password(enc_password, pass_iv, pass_tag, key)
+        # Déchiffrer le nom d'utilisateur
+        username = decrypt_password(username, user_iv, user_tag, key)
+        print(f"Site : {site}, Nom d'utilisateur : {username}, Mot de passe : {password}")

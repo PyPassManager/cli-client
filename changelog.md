@@ -29,3 +29,24 @@ Added comments and explanations
 - Added comments to the code to make it easier to understand
 - Added explanations for the functions to simplify collaboration
 - TODO : bug fix in list passwords - add a pin ?
+
+v0.0.5
+Bugfixes and optimizations 🐛
+- New database structure for passwords encryption (in progress) 🏗️
+- Fixed a bug where the password and username were not encrypted and decrypted correctly 🛡️
+- Encryption and decryption of passwords and usernames are now done separately 🛡️
+- Encryption and decryption system improved ✨
+- Optimized salt in main (already generated) 🧂
+- Updated password_utils.py and security.py to use the new encryption system 🛡️
+- New utility functions optimized by @Yoann were added to utils.py 🛠️
+- New TODO file added to keep track of the tasks to be done 📝
+> Git modifications :
+- Added a new branch "list-passwords" to work on the list passwords feature 🌿
+- Merging the "list-passwords" branch into the "opti" branch 🌿
+- Merging the "opti" branch into the "main" branch 🌿
+- Added a new branch "pin" to work on the pin feature 🌿
+- Removed branch "facial-recognition" (not used) 🌿
+
+
+
+

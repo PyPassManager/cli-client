@@ -1,9 +1,9 @@
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from cryptography.hazmat.backends import default_backend
-from cryptography.exceptions import InvalidTag
-import os
 import base64
+import os
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
 
 # ==================================================================================================
 # Ce code fournit des fonctions pour dériver une clé à partir d'un mot de passe, chiffrer un mot de
@@ -16,17 +16,15 @@ import base64
 # dérivation de clé Scrypt pour générer une clé de 32 octets. Scrypt est conçu pour être intensif en
 # calcul afin de résister aux attaques par force brute.
 # ==================================================================================================
-def derive_key(password, salt):
-    kdf = Scrypt(
-        salt=salt,
+def derive_key(password, salt, iterations=100000):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
         length=32,
-        n=2**14,
-        r=8,
-        p=1,
+        salt=salt,
+        iterations=iterations,
         backend=default_backend()
     )
-    key = kdf.derive(password.encode())
-    return key
+    return kdf.derive(password.encode())
 
 # ==================================================================================================
 # INFOS :
@@ -48,11 +46,16 @@ def derive_key(password, salt):
 # le mot de passe en utilisant l'algorithme AES
 # ==================================================================================================
 def encrypt_password(password, key):
-    iv = os.urandom(12)
+    iv = os.urandom(12)  # IV pour AES-GCM
     cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(password.encode()) + encryptor.finalize()
-    return base64.b64encode(ciphertext).decode(), base64.b64encode(iv).decode(), base64.b64encode(encryptor.tag).decode()
+    return (
+        base64.b64encode(ciphertext).decode(),
+        base64.b64encode(iv).decode(),
+        base64.b64encode(encryptor.tag).decode()
+    )
+
 
 # ==================================================================================================
 # La fonction decrypt_password permet de déchiffrer un mot de passe chiffré en utilisant la clé de
@@ -60,11 +63,13 @@ def encrypt_password(password, key):
 # ==================================================================================================
 def decrypt_password(encrypted_password, iv, tag, key):
     try:
-        cipher = Cipher(algorithms.AES(key), modes.GCM(base64.b64decode(iv), base64.b64decode(tag)), backend=default_backend())
+        cipher = Cipher(
+            algorithms.AES(key),
+            modes.GCM(base64.b64decode(iv), base64.b64decode(tag)),
+            backend=default_backend()
+        )
         decryptor = cipher.decryptor()
-        return decryptor.update(base64.b64decode(encrypted_password)) + decryptor.finalize()
-    except InvalidTag:
-        return "Invalid, Invalid, Invalid, Invalid".encode()
-    
-    
-
+        plaintext = decryptor.update(base64.b64decode(encrypted_password)) + decryptor.finalize()
+        return plaintext.decode("utf-8")
+    except Exception as e:
+        return f"Erreur de déchiffrement : {str(e)}"

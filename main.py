@@ -12,7 +12,6 @@ def main():
     if master_password is None:
         print("ERREUR CRITIQUE : LE MOT DE PASSE MAÎTRE EST NULL.")
         sys.exit()
-    salt = os.urandom(16)
     if salt is None:
         print("Veuillez redémarrer le programme.")
     key = derive_key(master_password, salt)

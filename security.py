@@ -82,8 +82,6 @@ def check_security_integrity(conn):
 # les mots de passe stockés dans la base de données.
 # =========================================================================================================
 def set_master_password(conn):
-    '''Fonction pour définir le mot de passe maître'''
-    # Connexion à la base de données et création du mot de passe maître
     cursor = conn.cursor()
     while True:
         master_password = getpass.getpass("Créez votre mot de passe maître : ")
@@ -92,29 +90,28 @@ def set_master_password(conn):
             continue
         confirm_password = getpass.getpass("Confirmez votre mot de passe maître : ")
         if master_password != confirm_password:
-            print("Les mots de passe ne correspondent pas. Veuillez réessayer.")
+            print("Les mots de passe ne correspondent pas.")
             continue
         break
-    
-    # Génération des clés de chiffrement
-    salt = os.urandom(16) 
+
+    salt = os.urandom(16)
     key = derive_key(master_password, salt)
     encrypted_password, iv, tag = encrypt_password(master_password, key)
     
-    # Insertion du mot de passe maître dans la base de données
-    cursor.execute("INSERT INTO master_password (encrypted_password, iv, salt, tag) VALUES (?, ?, ?, ?)",
-                   (encrypted_password, iv, base64.b64encode(salt).decode(), tag))
+    cursor.execute(
+        "INSERT INTO master_password (encrypted_password, iv, salt, tag) VALUES (?, ?, ?, ?)",
+        (encrypted_password, iv, base64.b64encode(salt).decode(), tag)
+    )
     conn.commit()
     print("Mot de passe maître créé avec succès.")
-    backup_database()
-    return master_password, base64.b64encode(salt).decode()
+    return master_password, salt
+
 
 # =========================================================================================================
 # Fonction pour vérifier le mot de passe maître. Cette fonction vérifie si le mot de passe maître existe
 # déjà dans la base de données et le compare avec le mot de passe fourni par l'utilisateur.
 # Cette fonction bloque également temporairement l'accès si le mot de passe est incorrect.
 # =========================================================================================================
-
 def check_master_password(conn):
     '''Fonction pour vérifier le mot de passe maître'''
     create_attempts_table(conn)
@@ -131,35 +128,30 @@ def check_master_password(conn):
     attempts, last_attempt = attempts_data
     current_time = int(time.time())
     
-    # Fonction pour calculer le temps d'attente en fonction du nombre de tentatives
     def get_wait_time(attempts):
-        if attempts <= 3:
-            return 5
-        return 5 + (attempts - 3) * 5
+        return 5 + max(0, (attempts - 3) * 5)
 
     wait_time = get_wait_time(attempts)
     
-    # Vérification du temps d'attente
     if current_time - last_attempt < wait_time:
         remaining_time = wait_time - (current_time - last_attempt)
         print(f"Accès temporairement bloqué. Veuillez réessayer dans {int(remaining_time)} secondes.")
         conn.close()
         sys.exit()
 
-    # Vérification de l'existence du mot de passe maître
     if result:
         encrypted_password, iv, salt, tag = result
         salt = base64.b64decode(salt)
         while True:
             master_password = getpass.getpass("Entrez votre mot de passe maître : ")
             key = derive_key(master_password, salt)
-            decrypted_password = decrypt_password(encrypted_password, iv, tag, key).decode()
+            decrypted_password = decrypt_password(encrypted_password, iv, tag, key)
             if decrypted_password == master_password:
                 print("Mot de passe correct !")
                 cursor.execute("UPDATE login_attempts SET attempts = 0, last_attempt = 0 WHERE id = 1")
                 conn.commit()
                 update_security_hash(conn)
-                return master_password, salt
+                return master_password, salt  # Retourne les deux valeurs correctement
             else:
                 print("Mot de passe incorrect.")
                 attempts += 1
@@ -171,7 +163,10 @@ def check_master_password(conn):
                 print(f"Prochaine tentative possible dans {wait_time} secondes.")
                 time.sleep(wait_time)
     else:
-        return set_master_password(conn)
+        # Retourne les valeurs de set_master_password
+        master_password, salt = set_master_password(conn)
+        return master_password, salt
+
 
 # =========================================================================================================
 # Fonction pour réinitialiser les tentatives de connexion. Cette fonction réinitialise le compteur de
