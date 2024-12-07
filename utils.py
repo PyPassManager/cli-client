@@ -1,11 +1,6 @@
 import random
 import string
 import re
-import os
-
-def clear_cli():
-    # Erase the screen and show the pin interface
-    os.system('cls' if os.name == 'nt' else 'clear')
 
 def generate_password(length=12, avoid_ambiguous=False):
     lowercase = string.ascii_lowercase
