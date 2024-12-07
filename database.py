@@ -17,7 +17,7 @@ def create_tables(conn):
     cursor = conn.cursor()
     tables = [
         '''CREATE TABLE IF NOT EXISTS master_password (id INTEGER PRIMARY KEY, encrypted_password BLOB, iv BLOB, salt BLOB, tag BLOB)''',
-        '''CREATE TABLE IF NOT EXISTS passwords (id INTEGER PRIMARY KEY, name TEXT, username BLOB, encrypted_password BLOB, url TEXT,strength INT, is_a2f BOOLEAN, is_favorite BOOLEAN, otp BLOB, notes TEXT, folder TEXT, shared TEXT,created_at DATETIME, modified_at DATETIME, iv_password BLOB, iv_username BLOB, tag_password BLOB, tag_username BLOB)''',
+        '''CREATE TABLE IF NOT EXISTS passwords (id INTEGER PRIMARY KEY, site TEXT, username BLOB, encrypted_password BLOB, url TEXT,strength INT, is_a2f BOOLEAN, is_favorite BOOLEAN, otp BLOB, notes TEXT, folder TEXT, shared TEXT,created_at DATETIME, modified_at DATETIME, iv_password BLOB, iv_username BLOB, tag_password BLOB, tag_username BLOB)''',
         '''CREATE TABLE IF NOT EXISTS totp (id INTEGER PRIMARY KEY, name TEXT, secret TEXT, time_offset INT, created_at DATETIME, modified_at DATETIME)''',
         '''CREATE TABLE IF NOT EXISTS login_attempts (id INTEGER PRIMARY KEY, attempts INTEGER, last_attempt DATETIME)''',
         '''CREATE TABLE IF NOT EXISTS security (id INTEGER PRIMARY KEY, login_attempts_hash TEXT, master_password_hash TEXT, last_hash_time INTEGER)''',
