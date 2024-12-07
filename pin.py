@@ -1,9 +1,5 @@
 from encryption import encrypt_password, decrypt_password, derive_key
 from database import backup_database
-from master_password import check_master_password
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-from datetime import datetime
 import os
 from utils import clear_cli
 import time

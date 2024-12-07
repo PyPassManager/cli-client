@@ -1,7 +1,7 @@
-from pin import has_pin, check_master_password, auth_with_pin
+from pin import has_pin, auth_with_pin
+from master_password import check_master_password
 from encryption import derive_key
 import sys
-import base64
 
 def authenticate_user(conn):
     """

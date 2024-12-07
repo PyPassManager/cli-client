@@ -1,6 +1,3 @@
-import re
-import string
-import random
 from encryption import encrypt_password, decrypt_password
 from database import backup_database
 

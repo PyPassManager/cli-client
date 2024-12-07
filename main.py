@@ -1,7 +1,5 @@
 import sys
 from database import create_connection, create_tables
-from master_password import check_master_password
-from encryption import derive_key
 from password_utils import add_password, remove_password, list_passwords
 from pin import show_pin_interface
 from auth import authenticate_user
